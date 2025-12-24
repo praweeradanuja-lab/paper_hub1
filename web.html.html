@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaperHub with Admin</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, #ec4899, #8b5cf6, #6366f1); }
+    .card { width:100%; max-width:480px; background: rgba(255,255,255,0.95); border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.2); }
+    h1 { text-align:center; margin-bottom:10px; background: linear-gradient(to right,#ec4899,#6366f1); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    p { text-align:center; color:#666; }
+    input, button, select { width:100%; padding:10px; margin-top:10px; border-radius:8px; border:1px solid #ddd; font-size:14px; }
+    button { border:none; background:linear-gradient(to right,#ec4899,#6366f1); color:white; font-weight:bold; cursor:pointer; }
+    button:hover { opacity:0.9; }
+    .hidden { display:none; }
+    .grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-top:16px; }
+    .link { text-align:center; margin-top:14px; font-size:14px; }
+    .link a { cursor:pointer; color:#6366f1; font-weight:bold; }
+    .admin-section { margin-bottom:20px; }
+    .list-item { display:flex; justify-content:space-between; margin-top:5px; }
+    textarea { width:100%; height:60px; margin-top:10px; }
+  </style>
+</head>
+<body>
+
+<!-- USER LOGIN -->
+<div id="login" class="card">
+  <h1>PaperHub</h1>
+  <p>Sign in to continue</p>
+  <input id="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
+  <button onclick="showDashboard()">Sign In</button>
+  <div class="link">
+    <span>Admin? </span>
+    <a onclick="openAdminLogin()">Login</a>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="card hidden">
+  <h1>Subjects</h1>
+  <p>Select a subject</p>
+  <div id="subjectGrid" class="grid"></div>
+  <div class="link"><a onclick="logoutUser()">Logout</a></div>
+</div>
+
+<!-- GRADES -->
+<div id="grades" class="card hidden">
+  <h1 id="gradeTitle">Grades</h1>
+  <div id="gradeGrid" class="grid"></div>
+  <div class="link"><a onclick="backToDashboard()">⬅ Back</a></div>
+</div>
+
+<!-- TERMS -->
+<div id="terms" class="card hidden">
+  <h1 id="termTitle">Terms</h1>
+  <div id="termGrid" class="grid"></div>
+  <div class="link"><a onclick="backToGrades()">⬅ Back</a></div>
+</div>
+
+<!-- YEARS -->
+<div id="years" class="card hidden">
+  <h1 id="yearTitle">Years</h1>
+  <div id="yearGrid" class="grid"></div>
+  <div class="link"><a onclick="backToTerms()">⬅ Back</a></div>
+</div>
+
+<!-- PROVINCES -->
+<div id="provinces" class="card hidden">
+  <h1 id="provinceTitle">Provinces</h1>
+  <div id="provinceGrid" class="grid"></div>
+  <div class="link"><a onclick="backToYears()">⬅ Back</a></div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="adminLogin" class="card hidden">
+  <h1>Admin Login</h1>
+  <input id="adminUser" placeholder="Username" />
+  <input id="adminPass" type="password" placeholder="Password" />
+  <button onclick="loginAdmin()">Login as Admin</button>
+  <div class="link"><a onclick="backToUserLogin()">⬅ Back</a></div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="card hidden">
+  <h1>Admin Panel</h1>
+  <div class="admin-section">
+    <h3>Subjects</h3>
+    <input id="newSubject" placeholder="Add new subject" />
+    <button onclick="addSubject()">Add Subject</button>
+    <div id="subjectList"></div>
+  </div>
+  <div class="admin-section">
+    <h3>Papers</h3>
+    <select id="selectSubject"></select>
+    <select id="selectGrade"></select>
+    <select id="selectTerm"></select>
+    <select id="selectYear"></select>
+    <select id="selectProvince"></select>
+    <textarea id="paperName" placeholder="Paper name for Google search"></textarea>
+    <button onclick="addPaper()">Add Paper</button>
+    <div id="paperList"></div>
+  </div>
+  <div class="link"><a onclick="logoutAdmin()">Logout Admin</a></div>
+</div>
+
+<script>
+//-------------------- DATA --------------------
+let subjects = JSON.parse(localStorage.getItem('subjects')) || ['Maths','Science','Sinhala','English','History','Buddhist'];
+let grades = ['Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12','Grade 13'];
+let terms = ['Term 1','Term 2','Term 3'];
+let years = ['2018','2019','2020','2021','2022','2023','2024','2025'];
+let provinces = ['Western','Central','Southern','Northern','Eastern','North Western','North Central','Uva','Sabaragamuwa'];
+let papers = JSON.parse(localStorage.getItem('papers')) || [];
+
+//-------------------- ADMIN --------------------
+function loginAdmin() {
+  const user=document.getElementById('adminUser').value;
+  const pass=document.getElementById('adminPass').value;
+  if(user==='admin' && pass==='admin123') {
+    document.getElementById('adminLogin').classList.add('hidden');
+    document.getElementById('adminPanel').classList.remove('hidden');
+    loadAdminData();
+  } else alert('Invalid credentials');
+}
+function logoutAdmin() { document.getElementById('adminPanel').classList.add('hidden'); document.getElementById('login').classList.remove('hidden'); }
+function addSubject() { const s=document.getElementById('newSubject').value.trim(); if(s && !subjects.includes(s)) { subjects.push(s); localStorage.setItem('subjects',JSON.stringify(subjects)); document.getElementById('newSubject').value=''; loadAdminData(); loadDashboard(); } }
+function removeSubject(s) { subjects=subjects.filter(sub=>sub!==s); localStorage.setItem('subjects',JSON.stringify(subjects)); loadAdminData(); loadDashboard(); }
+function addPaper() { const s=document.getElementById('selectSubject').value; const g=document.getElementById('selectGrade').value; const t=document.getElementById('selectTerm').value; const y=document.getElementById('selectYear').value; const p=document.getElementById('selectProvince').value; const name=document.getElementById('paperName').value.trim(); if(name) { papers.push({subject:s,grade:g,term:t,year:y,province:p,name:name}); localStorage.setItem('papers',JSON.stringify(papers)); document.getElementById('paperName').value=''; loadAdminData(); } }
+function removePaper(i) { papers.splice(i,1); localStorage.setItem('papers',JSON.stringify(papers)); loadAdminData(); }
+function loadAdminData() {
+  document.getElementById('subjectList').innerHTML = subjects.map(s=>`<div class='list-item'>${s} <button onclick="removeSubject('${s}')">Delete</button></div>`).join('');
+  ['selectSubject','selectGrade','selectTerm','selectYear','selectProvince'].forEach(id=>{ const sel=document.getElementById(id); sel.innerHTML=''; });
+  subjects.forEach(s=>document.getElementById('selectSubject').innerHTML+=`<option>${s}</option>`);
+  grades.forEach(g=>document.getElementById('selectGrade').innerHTML+=`<option>${g}</option>`);
+  terms.forEach(t=>document.getElementById('selectTerm').innerHTML+=`<option>${t}</option>`);
+  years.forEach(y=>document.getElementById('selectYear').innerHTML+=`<option>${y}</option>`);
+  provinces.forEach(p=>document.getElementById('selectProvince').innerHTML+=`<option>${p}</option>`);
+  document.getElementById('paperList').innerHTML = papers.map((p,i)=>`<div class='list-item'>${p.subject} ${p.grade} ${p.term} ${p.year} ${p.province} : ${p.name} <button onclick='removePaper(${i})'>Delete</button></div>`).join('');
+}
+
+//-------------------- USER --------------------
+let currentSubject='', currentGrade='', currentTerm='', currentYear='';
+function showDashboard() { document.getElementById('login').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); loadDashboard(); }
+function logoutUser() { document.getElementById('dashboard').classList.add('hidden'); document.getElementById('login').classList.remove('hidden'); }
+function backToDashboard() { document.getElementById('grades').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); }
+function backToGrades() { document.getElementById('terms').classList.add('hidden'); document.getElementById('grades').classList.remove('hidden'); }
+function backToTerms() { document.getElementById('years').classList.add('hidden'); document.getElementById('terms').classList.remove('hidden'); }
+function backToYears() { document.getElementById('provinces').classList.add('hidden'); document.getElementById('years').classList.remove('hidden'); }
+function openAdminLogin() { document.getElementById('login').classList.add('hidden'); document.getElementById('adminLogin').classList.remove('hidden'); }
+function backToUserLogin() { document.getElementById('login').classList.remove('hidden'); document.getElementById('adminLogin').classList.add('hidden'); }
+
+function loadDashboard() {
+  const grid=document.getElementById('subjectGrid'); grid.innerHTML='';
+  subjects.forEach(s=>{ const btn=document.createElement('button'); btn.innerText=s; btn.onclick=()=>openGrades(s); grid.appendChild(btn); });
+}
+
+function openGrades(subject) { currentSubject=subject; document.getElementById('dashboard').classList.add('hidden'); document.getElementById('grades').classList.remove('hidden'); document.getElementById('gradeTitle').innerText=subject+' - Grades';
+  const grid=document.getElementById('gradeGrid'); grid.innerHTML=''; grades.forEach(g=>{ const btn=document.createElement('button'); btn.innerText=g; btn.onclick=()=>openTerms(g); grid.appendChild(btn); });
+}
+
+function openTerms(grade) { currentGrade=grade; document.getElementById('grades').classList.add('hidden'); document.getElementById('terms').classList.remove('hidden'); document.getElementById('termTitle').innerText=currentSubject+' - '+grade+' - Terms';
+  const grid=document.getElementById('termGrid'); grid.innerHTML=''; terms.forEach(t=>{ const btn=document.createElement('button'); btn.innerText=t; btn.onclick=()=>openYears(t); grid.appendChild(btn); });
+}
+
+function openYears(term) { currentTerm=term; document.getElementById('terms').classList.add('hidden'); document.getElementById('years').classList.remove('hidden'); document.getElementById('yearTitle').innerText=currentSubject+' - '+currentGrade+' - '+term+' - Years';
+  const grid=document.getElementById('yearGrid'); grid.innerHTML=''; years.forEach(y=>{ const btn=document.createElement('button'); btn.innerText=y; btn.onclick=()=>openProvinces(y); grid.appendChild(btn); });
+}
+
+function openProvinces(year) { currentYear=year; document.getElementById('years').classList.add('hidden'); document.getElementById('provinces').classList.remove('hidden'); document.getElementById('provinceTitle').innerText=currentSubject+' - '+currentGrade+' - '+currentTerm+' - '+year+' - Provinces';
+  const grid=document.getElementById('provinceGrid'); grid.innerHTML=''; provinces.forEach(p=>{ const btn=document.createElement('button'); btn.innerText=p; btn.onclick=()=>searchPaper(p); grid.appendChild(btn); });
+}
+
+function searchPaper(province) {
+  const paper=papers.find(p=>p.subject===currentSubject && p.grade===currentGrade && p.term===currentTerm && p.year===currentYear && p.province===province);
+  const query=paper?paper.name:`${currentSubject} ${currentGrade} ${currentTerm} ${currentYear} ${province} past paper`;
+  window.open('https://www.google.com/search?q='+encodeURIComponent(query),'_blank');
+}
+
+loadAdminData();
+loadDashboard();
+</script>
+
+</body>
+</html>
